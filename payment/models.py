@@ -12,6 +12,7 @@ class Payment(models.Model):
     amount = models.BigIntegerField()
     order = models.ForeignKey('order.Order', on_delete=models.RESTRICT)
     paymentID = models.CharField(max_length=600, db_index=True)
+    gatewayReferenceID = models.TextField(null=True)
     status = models.CharField(
         max_length=7,
         choices=Status.choices,
