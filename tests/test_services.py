@@ -87,7 +87,7 @@ def test_process_order_logs_amount_mismatch(caplog):
     assert result == {
         'paymentID': '000789',
         'amount': 300000,
-        'status': 'PENDING',
+        'status': Payment.Status.SUCCESS,
         'gatewayRefrenceID': '000999',
         'sellerId': seller.id,
     }
@@ -119,7 +119,7 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
     assert result == {
         'paymentID': '000777',
         'amount': 500,
-        'status': 'PENDING',
+        'status': Payment.Status.SUCCESS,
         'gatewayRefrenceID': '000888',
         'sellerId': seller.id,
     }

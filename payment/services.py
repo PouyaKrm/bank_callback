@@ -58,6 +58,9 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
             referenceID=payment.paymentID,
         )
 
+        payment.status = Payment.Status.SUCCESS
+        payment.save(update_fields=['status'])
+
         return {
             'paymentID': payment.paymentID,
             'amount': payment.amount,
