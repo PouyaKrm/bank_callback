@@ -21,6 +21,14 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
         except Payment.DoesNotExist as exc:
             raise ObjectDoesNotExist(f"Payment with paymentID '{paymentID}' was not found.") from exc
 
+        if payment.status in {Payment.Status.SUCCESS, Payment.Status.FAILED}:
+            return {
+                'paymentID': payment.paymentID,
+                'amount': payment.amount,
+                'status': payment.status,
+                'gatewayRefrenceID': payment.gatewayReferenceID,
+            }
+
         return {
             'paymentID': payment.paymentID,
             'amount': payment.amount,

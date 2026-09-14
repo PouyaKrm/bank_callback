@@ -33,6 +33,32 @@ def test_process_order_returns_callback_payload():
 
 
 @pytest.mark.django_db
+def test_process_order_returns_for_failed_payment():
+    order = Order.objects.create(name='Failed order')
+    Payment.objects.create(
+        paymentID='000456',
+        amount=200000,
+        order=order,
+        status=Payment.Status.FAILED,
+        gatewayReferenceID='000789',
+    )
+
+    result = process_order(
+        paymentID='000456',
+        amount=200000,
+        status='FAILED',
+        gatewayRefrenceID='000789',
+    )
+
+    assert result == {
+        'paymentID': '000456',
+        'amount': 200000,
+        'status': 'FAILED',
+        'gatewayRefrenceID': '000789',
+    }
+
+
+@pytest.mark.django_db
 def test_process_order_raises_when_payment_not_found():
     with pytest.raises(ObjectDoesNotExist, match="paymentID 'missing-id' was not found"):
         process_order(
