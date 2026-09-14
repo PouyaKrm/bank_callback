@@ -3,7 +3,9 @@ import logging
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 
-from .models import Payment
+from order.models import Seller
+
+from .models import Payment, SellerLedger
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,12 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
     """
     with transaction.atomic():
         try:
-            payment = Payment.objects.get(paymentID=paymentID)
+            payment = Payment.objects.select_related('order').get(paymentID=paymentID)
         except Payment.DoesNotExist as exc:
             raise ObjectDoesNotExist(f"Payment with paymentID '{paymentID}' was not found.") from exc
+
+        seller_id = payment.order.seller_id
+        seller = Seller.objects.select_for_update().get(pk=seller_id)
 
         if payment.status in {Payment.Status.SUCCESS, Payment.Status.FAILED}:
             return {
@@ -31,6 +36,7 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
                 'amount': payment.amount,
                 'status': payment.status,
                 'gatewayRefrenceID': payment.gatewayReferenceID,
+                'sellerId': seller.id,
             }
 
         if amount != payment.amount:
@@ -41,10 +47,22 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
                 payment.amount,
             )
 
+        seller.balance += payment.amount
+        seller.save(update_fields=['balance'])
+
+        SellerLedger.objects.create(
+            sellerId=seller.id,
+            amount=payment.amount,
+            balance=seller.balance,
+            legerEntryType=SellerLedger.LegerEntryType.SALE,
+            referenceID=payment.paymentID,
+        )
+
         return {
             'paymentID': payment.paymentID,
             'amount': payment.amount,
             'status': payment.status,
             'gatewayRefrenceID': payment.gatewayReferenceID,
+            'sellerId': seller.id,
         }
 

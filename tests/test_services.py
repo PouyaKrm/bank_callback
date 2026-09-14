@@ -32,6 +32,7 @@ def test_process_order_returns_callback_payload():
         'amount': 100000,
         'status': 'SUCCESS',
         'gatewayRefrenceID': '000456',
+        'sellerId': seller.id,
     }
 
 
@@ -59,6 +60,7 @@ def test_process_order_returns_for_failed_payment():
         'amount': 200000,
         'status': 'FAILED',
         'gatewayRefrenceID': '000789',
+        'sellerId': seller.id,
     }
 
 
@@ -87,6 +89,7 @@ def test_process_order_logs_amount_mismatch(caplog):
         'amount': 300000,
         'status': 'PENDING',
         'gatewayRefrenceID': '000999',
+        'sellerId': seller.id,
     }
     assert 'Payment amount mismatch for paymentID 000789' in caplog.text
 
@@ -125,6 +128,39 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
     assert ledger_entry.amount == 500
     assert ledger_entry.balance == 500
     assert ledger_entry.legerEntryType == SellerLedger.LegerEntryType.SALE
+
+
+@pytest.mark.django_db
+def test_process_order_rolls_back_on_error():
+    seller = Seller.objects.create(balance=0)
+    order = Order.objects.create(name='Rollback order', seller=seller)
+    Payment.objects.create(
+        paymentID='000999',
+        amount=250,
+        order=order,
+        status=Payment.Status.PENDING,
+        gatewayReferenceID='0001000',
+    )
+
+    original_balance = seller.balance
+    original_ledger_count = SellerLedger.objects.count()
+
+    with pytest.raises(RuntimeError, match='forced rollback'):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            def fail_after_lock(*args, **kwargs):
+                raise RuntimeError('forced rollback')
+
+            monkeypatch.setattr('payment.services.SellerLedger.objects.create', fail_after_lock)
+            process_order(
+                paymentID='000999',
+                amount=250,
+                status='PENDING',
+                gatewayRefrenceID='0001000',
+            )
+
+    seller.refresh_from_db()
+    assert seller.balance == original_balance
+    assert SellerLedger.objects.count() == original_ledger_count
 
 
 @pytest.mark.django_db
