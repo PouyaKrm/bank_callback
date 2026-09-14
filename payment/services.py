@@ -1,3 +1,9 @@
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+
+from .models import Payment
+
+
 def process_order(*, paymentID, amount, status, gatewayRefrenceID):
     """Process a payment callback payload received from the gateway.
 
@@ -9,10 +15,16 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
             gatewayRefrenceID='000456',
         )
     """
-    return {
-        'paymentID': paymentID,
-        'amount': amount,
-        'status': status,
-        'gatewayRefrenceID': gatewayRefrenceID,
-    }
+    with transaction.atomic():
+        try:
+            payment = Payment.objects.get(paymentID=paymentID)
+        except Payment.DoesNotExist as exc:
+            raise ObjectDoesNotExist(f"Payment with paymentID '{paymentID}' was not found.") from exc
+
+        return {
+            'paymentID': payment.paymentID,
+            'amount': payment.amount,
+            'status': payment.status,
+            'gatewayRefrenceID': payment.gatewayReferenceID,
+        }
 
