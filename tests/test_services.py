@@ -10,7 +10,7 @@ from payment.services import handle_callback
 
 
 @pytest.mark.django_db
-def test_process_order_returns_callback_payload():
+def test_handle_callback_returns_callback_payload():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Test order', seller=seller)
     Payment.objects.create(
@@ -37,7 +37,7 @@ def test_process_order_returns_callback_payload():
 
 
 @pytest.mark.django_db
-def test_process_order_returns_for_failed_payment():
+def test_handle_callback_returns_for_failed_payment():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Failed order', seller=seller)
     Payment.objects.create(
@@ -64,7 +64,7 @@ def test_process_order_returns_for_failed_payment():
 
 
 @pytest.mark.django_db
-def test_process_order_updates_seller_balance_and_creates_ledger_entry():
+def test_handle_callback_updates_seller_balance_and_creates_ledger_entry():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Ledger order', seller=seller)
     Payment.objects.create(
@@ -99,7 +99,7 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
 
 
 @pytest.mark.django_db
-def test_process_order_rolls_back_on_error():
+def test_handle_callback_rolls_back_on_error():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Rollback order', seller=seller)
     Payment.objects.create(
@@ -132,7 +132,7 @@ def test_process_order_rolls_back_on_error():
 
 
 @pytest.mark.django_db
-def test_process_order_raises_on_amount_mismatch_in_service():
+def test_handle_callback_raises_on_amount_mismatch_in_service():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Mismatch service order', seller=seller)
     Payment.objects.create(
@@ -156,7 +156,7 @@ def test_process_order_raises_on_amount_mismatch_in_service():
 
 
 @pytest.mark.django_db
-def test_process_order_raises_when_payment_not_found():
+def test_handle_callback_raises_when_payment_not_found():
     with pytest.raises(ObjectDoesNotExist, match="paymentID 'missing-id' was not found"):
         handle_callback(
             paymentID='missing-id',
