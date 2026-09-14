@@ -2,6 +2,7 @@ import logging
 
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import ValidationError
 
 from order.models import Order, Seller
 from payment.models import Payment, SellerLedger
@@ -65,7 +66,7 @@ def test_process_order_returns_for_failed_payment():
 
 
 @pytest.mark.django_db
-def test_process_order_logs_amount_mismatch(caplog):
+def test_process_order_raises_on_amount_mismatch():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Mismatch order', seller=seller)
     Payment.objects.create(
@@ -76,22 +77,19 @@ def test_process_order_logs_amount_mismatch(caplog):
         gatewayReferenceID='000999',
     )
 
-    with caplog.at_level(logging.WARNING):
-        result = process_order(
-            paymentID='000789',
-            amount=999,
-            status='PENDING',
-            gatewayRefrenceID='000999',
-        )
+    response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
+        'GET',
+        '/payment/callback/',
+        '{"paymentID":"000789","amount":999,"status":"PENDING","gatewayRefrenceID":"000999"}',
+        content_type='application/json',
+    )
 
-    assert result == {
-        'paymentID': '000789',
-        'amount': 300000,
-        'status': Payment.Status.SUCCESS,
-        'gatewayRefrenceID': '000999',
-        'sellerId': seller.id,
-    }
-    assert 'Payment amount mismatch for paymentID 000789' in caplog.text
+    assert response.status_code == 400
+    assert 'Payment amount mismatch' in response.data[0]
+
+    seller.refresh_from_db()
+    assert seller.balance == 0
+    assert SellerLedger.objects.filter(referenceID='000789').count() == 0
 
 
 @pytest.mark.django_db
@@ -161,6 +159,29 @@ def test_process_order_rolls_back_on_error():
     seller.refresh_from_db()
     assert seller.balance == original_balance
     assert SellerLedger.objects.count() == original_ledger_count
+
+
+@pytest.mark.django_db
+def test_payment_callback_returns_400_on_amount_mismatch():
+    seller = Seller.objects.create(balance=0)
+    order = Order.objects.create(name='Mismatch callback order', seller=seller)
+    Payment.objects.create(
+        paymentID='000333',
+        amount=900,
+        order=order,
+        status=Payment.Status.PENDING,
+        gatewayReferenceID='000444',
+    )
+
+    response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
+        'GET',
+        '/payment/callback/',
+        '{"paymentID":"000333","amount":100,"status":"PENDING","gatewayRefrenceID":"000444"}',
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    assert 'Payment amount mismatch' in response.data[0]
 
 
 @pytest.mark.django_db

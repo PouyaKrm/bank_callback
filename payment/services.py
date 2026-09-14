@@ -2,6 +2,7 @@ import logging
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from order.models import Seller
 
@@ -40,11 +41,8 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
             }
 
         if amount != payment.amount:
-            logger.warning(
-                "Payment amount mismatch for paymentID %s: callback=%s, stored=%s",
-                paymentID,
-                amount,
-                payment.amount,
+            raise ValidationError(
+                f"Payment amount mismatch for paymentID '{paymentID}': callback={amount}, stored={payment.amount}."
             )
 
         seller.balance += payment.amount
