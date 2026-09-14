@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from order.models import Order, Seller
 from payment.models import Payment, SellerLedger
-from payment.services import process_order
+from payment.services import handle_callback
 
 
 @pytest.mark.django_db
@@ -20,7 +20,7 @@ def test_process_order_returns_callback_payload():
         status=Payment.Status.SUCCESS,
     )
 
-    result = process_order(
+    result = handle_callback(
         paymentID='000123',
         amount=100000,
         status='SUCCESS',
@@ -47,7 +47,7 @@ def test_process_order_returns_for_failed_payment():
         status=Payment.Status.FAILED,
     )
 
-    result = process_order(
+    result = handle_callback(
         paymentID='000456',
         amount=200000,
         status='FAILED',
@@ -74,7 +74,7 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
         status=Payment.Status.PENDING,
     )
 
-    result = process_order(
+    result = handle_callback(
         paymentID='000777',
         amount=500,
         status='PENDING',
@@ -118,7 +118,7 @@ def test_process_order_rolls_back_on_error():
                 raise RuntimeError('forced rollback')
 
             monkeypatch.setattr('payment.services.SellerLedger.objects.create', fail_after_lock)
-            process_order(
+            handle_callback(
                 paymentID='000999',
                 amount=250,
                 status='PENDING',
@@ -143,7 +143,7 @@ def test_process_order_raises_on_amount_mismatch_in_service():
     )
 
     with pytest.raises(ValidationError, match="Payment amount mismatch"):
-        process_order(
+        handle_callback(
             paymentID='000555',
             amount=999,
             status='PENDING',
@@ -158,7 +158,7 @@ def test_process_order_raises_on_amount_mismatch_in_service():
 @pytest.mark.django_db
 def test_process_order_raises_when_payment_not_found():
     with pytest.raises(ObjectDoesNotExist, match="paymentID 'missing-id' was not found"):
-        process_order(
+        handle_callback(
             paymentID='missing-id',
             amount=100000,
             status='SUCCESS',

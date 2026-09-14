@@ -11,11 +11,11 @@ from .models import Payment, SellerLedger
 logger = logging.getLogger(__name__)
 
 
-def process_order(*, paymentID, amount, status, gatewayRefrenceID):
+def handle_callback(*, paymentID, amount, status, gatewayRefrenceID):
     """Process a payment callback payload received from the gateway.
 
     All arguments must be passed by keyword, for example:
-        process_order(
+        handle_callback(
             paymentID='000123',
             amount=100000,
             status='SUCCESS',
