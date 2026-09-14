@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('balance', models.BigIntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True, null=True)),
                 ('legerEntryType', models.CharField(choices=[('SALE', 'Sale'), ('REFUND', 'Refund'), ('COMMISSION', 'Commission'), ('PAYOUT', 'Payout'), ('ADJUSTMENT', 'Adjustment')], max_length=10)),
-                ('referenceID', models.CharField(db_index=True, max_length=600)),
+                ('gatewayReferenceID', models.TextField(null=True)),
             ],
         ),
         migrations.CreateModel(
@@ -31,7 +31,6 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('amount', models.BigIntegerField()),
                 ('paymentID', models.CharField(db_index=True, max_length=600)),
-                ('gatewayReferenceID', models.TextField(null=True)),
                 ('status', models.CharField(choices=[('SUCCESS', 'Success'), ('PENDING', 'Pending'), ('FAILED', 'Failed')], default='PENDING', max_length=7)),
                 ('order', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to='order.order')),
             ],

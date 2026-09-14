@@ -18,7 +18,6 @@ class TestPaymentCallbackIntegration:
             amount=2500,
             order=order,
             status=Payment.Status.PENDING,
-            gatewayReferenceID='gw-success-1',
         )
 
         response = self.client.generic(
@@ -32,7 +31,7 @@ class TestPaymentCallbackIntegration:
 
         payment = Payment.objects.get(paymentID='SUCCESS-INT-1')
         seller.refresh_from_db()
-        ledger_entry = SellerLedger.objects.get(referenceID='SUCCESS-INT-1')
+        ledger_entry = SellerLedger.objects.get(gatewayReferenceID='gw-success-1')
 
         assert payment.status == Payment.Status.SUCCESS
         assert seller.balance == 2500
@@ -48,7 +47,6 @@ class TestPaymentCallbackIntegration:
             amount=3000,
             order=order,
             status=Payment.Status.PENDING,
-            gatewayReferenceID='gw-fail-1',
         )
 
         response = self.client.generic(
@@ -63,4 +61,4 @@ class TestPaymentCallbackIntegration:
 
         seller.refresh_from_db()
         assert seller.balance == 0
-        assert SellerLedger.objects.filter(referenceID='FAIL-INT-1').count() == 0
+        assert SellerLedger.objects.filter(gatewayReferenceID='gw-fail-1').count() == 0

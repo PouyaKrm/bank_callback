@@ -36,7 +36,7 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
                 'paymentID': payment.paymentID,
                 'amount': payment.amount,
                 'status': payment.status,
-                'gatewayRefrenceID': payment.gatewayReferenceID,
+                'gatewayRefrenceID': gatewayRefrenceID,
                 'sellerId': seller.id,
             }
 
@@ -53,7 +53,7 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
             amount=payment.amount,
             balance=seller.balance,
             legerEntryType=SellerLedger.LegerEntryType.SALE,
-            referenceID=payment.paymentID,
+            gatewayReferenceID=gatewayRefrenceID,
         )
 
         payment.status = Payment.Status.SUCCESS
@@ -63,7 +63,7 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
             'paymentID': payment.paymentID,
             'amount': payment.amount,
             'status': payment.status,
-            'gatewayRefrenceID': payment.gatewayReferenceID,
+            'gatewayRefrenceID': gatewayRefrenceID,
             'sellerId': seller.id,
         }
 

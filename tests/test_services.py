@@ -18,7 +18,6 @@ def test_process_order_returns_callback_payload():
         amount=100000,
         order=order,
         status=Payment.Status.SUCCESS,
-        gatewayReferenceID='000456',
     )
 
     result = process_order(
@@ -46,7 +45,6 @@ def test_process_order_returns_for_failed_payment():
         amount=200000,
         order=order,
         status=Payment.Status.FAILED,
-        gatewayReferenceID='000789',
     )
 
     result = process_order(
@@ -74,7 +72,6 @@ def test_process_order_raises_on_amount_mismatch():
         amount=300000,
         order=order,
         status=Payment.Status.PENDING,
-        gatewayReferenceID='000999',
     )
 
     response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
@@ -89,7 +86,7 @@ def test_process_order_raises_on_amount_mismatch():
 
     seller.refresh_from_db()
     assert seller.balance == 0
-    assert SellerLedger.objects.filter(referenceID='000789').count() == 0
+    assert SellerLedger.objects.filter(gatewayReferenceID='000999').count() == 0
 
 
 @pytest.mark.django_db
@@ -101,7 +98,6 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
         amount=500,
         order=order,
         status=Payment.Status.PENDING,
-        gatewayReferenceID='000888',
     )
 
     result = process_order(
@@ -112,7 +108,7 @@ def test_process_order_updates_seller_balance_and_creates_ledger_entry():
     )
 
     seller.refresh_from_db()
-    ledger_entry = SellerLedger.objects.get(referenceID='000777')
+    ledger_entry = SellerLedger.objects.get(gatewayReferenceID='000888')
 
     assert result == {
         'paymentID': '000777',
@@ -137,7 +133,6 @@ def test_process_order_rolls_back_on_error():
         amount=250,
         order=order,
         status=Payment.Status.PENDING,
-        gatewayReferenceID='0001000',
     )
 
     original_balance = seller.balance
@@ -170,7 +165,6 @@ def test_payment_callback_returns_400_on_amount_mismatch():
         amount=900,
         order=order,
         status=Payment.Status.PENDING,
-        gatewayReferenceID='000444',
     )
 
     response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
