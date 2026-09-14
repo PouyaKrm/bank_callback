@@ -34,7 +34,7 @@ class SellerLedger(models.Model):
     sellerId = models.IntegerField()
     amount = models.BigIntegerField()
     balance = models.BigIntegerField(default=0)
-    created_at = models.DateTimeField(default=timezone.now, auto_now_add=True)
+    created_at = models.DateTimeField(null=True, auto_now_add=True)
     legerEntryType = models.CharField(
         max_length=10,
         choices=LegerEntryType.choices,
