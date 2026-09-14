@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Payment(models.Model):
@@ -32,6 +33,8 @@ class SellerLedger(models.Model):
 
     sellerId = models.IntegerField()
     amount = models.BigIntegerField()
+    balance = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now, auto_now_add=True)
     legerEntryType = models.CharField(
         max_length=10,
         choices=LegerEntryType.choices,
