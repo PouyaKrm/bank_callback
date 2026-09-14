@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -56,6 +58,34 @@ def test_process_order_returns_for_failed_payment():
         'status': 'FAILED',
         'gatewayRefrenceID': '000789',
     }
+
+
+@pytest.mark.django_db
+def test_process_order_logs_amount_mismatch(caplog):
+    order = Order.objects.create(name='Mismatch order')
+    Payment.objects.create(
+        paymentID='000789',
+        amount=300000,
+        order=order,
+        status=Payment.Status.PENDING,
+        gatewayReferenceID='000999',
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = process_order(
+            paymentID='000789',
+            amount=999,
+            status='PENDING',
+            gatewayRefrenceID='000999',
+        )
+
+    assert result == {
+        'paymentID': '000789',
+        'amount': 300000,
+        'status': 'PENDING',
+        'gatewayRefrenceID': '000999',
+    }
+    assert 'Payment amount mismatch for paymentID 000789' in caplog.text
 
 
 @pytest.mark.django_db

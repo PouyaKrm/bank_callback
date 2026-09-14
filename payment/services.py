@@ -1,7 +1,11 @@
+import logging
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 
 from .models import Payment
+
+logger = logging.getLogger(__name__)
 
 
 def process_order(*, paymentID, amount, status, gatewayRefrenceID):
@@ -28,6 +32,14 @@ def process_order(*, paymentID, amount, status, gatewayRefrenceID):
                 'status': payment.status,
                 'gatewayRefrenceID': payment.gatewayReferenceID,
             }
+
+        if amount != payment.amount:
+            logger.warning(
+                "Payment amount mismatch for paymentID %s: callback=%s, stored=%s",
+                paymentID,
+                amount,
+                payment.amount,
+            )
 
         return {
             'paymentID': payment.paymentID,
