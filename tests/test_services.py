@@ -64,32 +64,6 @@ def test_process_order_returns_for_failed_payment():
 
 
 @pytest.mark.django_db
-def test_process_order_raises_on_amount_mismatch():
-    seller = Seller.objects.create(balance=0)
-    order = Order.objects.create(name='Mismatch order', seller=seller)
-    Payment.objects.create(
-        paymentID='000789',
-        amount=300000,
-        order=order,
-        status=Payment.Status.PENDING,
-    )
-
-    response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
-        'GET',
-        '/payment/callback/',
-        '{"paymentID":"000789","amount":999,"status":"PENDING","gatewayRefrenceID":"000999"}',
-        content_type='application/json',
-    )
-
-    assert response.status_code == 400
-    assert 'Payment amount mismatch' in response.data[0]
-
-    seller.refresh_from_db()
-    assert seller.balance == 0
-    assert SellerLedger.objects.filter(gatewayReferenceID='000999').count() == 0
-
-
-@pytest.mark.django_db
 def test_process_order_updates_seller_balance_and_creates_ledger_entry():
     seller = Seller.objects.create(balance=0)
     order = Order.objects.create(name='Ledger order', seller=seller)
@@ -156,26 +130,29 @@ def test_process_order_rolls_back_on_error():
     assert SellerLedger.objects.count() == original_ledger_count
 
 
+
 @pytest.mark.django_db
-def test_payment_callback_returns_400_on_amount_mismatch():
+def test_process_order_raises_on_amount_mismatch_in_service():
     seller = Seller.objects.create(balance=0)
-    order = Order.objects.create(name='Mismatch callback order', seller=seller)
+    order = Order.objects.create(name='Mismatch service order', seller=seller)
     Payment.objects.create(
-        paymentID='000333',
-        amount=900,
+        paymentID='000555',
+        amount=1200,
         order=order,
         status=Payment.Status.PENDING,
     )
 
-    response = __import__('rest_framework.test', fromlist=['APIClient']).APIClient().generic(
-        'GET',
-        '/payment/callback/',
-        '{"paymentID":"000333","amount":100,"status":"PENDING","gatewayRefrenceID":"000444"}',
-        content_type='application/json',
-    )
+    with pytest.raises(ValidationError, match="Payment amount mismatch"):
+        process_order(
+            paymentID='000555',
+            amount=999,
+            status='PENDING',
+            gatewayRefrenceID='000666',
+        )
 
-    assert response.status_code == 400
-    assert 'Payment amount mismatch' in response.data[0]
+    seller.refresh_from_db()
+    assert seller.balance == 0
+    assert SellerLedger.objects.filter(gatewayReferenceID='000666').count() == 0
 
 
 @pytest.mark.django_db
