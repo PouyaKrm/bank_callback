@@ -1,7 +1,10 @@
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from order.models import Order, Seller
@@ -129,6 +132,49 @@ def test_handle_callback_rolls_back_on_error():
     assert seller.balance == original_balance
     assert SellerLedger.objects.count() == original_ledger_count
 
+
+
+@pytest.mark.django_db(transaction=True)
+def test_handle_callback_returns_fallback_when_db_lock_is_hit():
+    seller = Seller.objects.create(balance=0)
+    order = Order.objects.create(name='Locked seller order', seller=seller)
+    Payment.objects.create(
+        paymentID='000333',
+        amount=300,
+        order=order,
+        status=Payment.Status.PENDING,
+    )
+
+    lock_acquired = threading.Event()
+    release_lock = threading.Event()
+
+    def hold_seller_row_lock():
+        with transaction.atomic():
+            Seller.objects.select_for_update(nowait=True).get(pk=seller.pk)
+            lock_acquired.set()
+            assert release_lock.wait(timeout=5)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        holder = executor.submit(hold_seller_row_lock)
+        assert lock_acquired.wait(timeout=5)
+
+        result = handle_callback(
+            paymentID='000333',
+            amount=300,
+            status='PENDING',
+            gatewayRefrenceID='000444',
+        )
+
+        release_lock.set()
+        holder.result()
+
+    assert result == {
+        'paymentID': '000333',
+        'amount': 300,
+        'status': Payment.Status.PENDING,
+        'gatewayRefrenceID': '000444',
+        'sellerId': seller.id,
+    }
 
 
 @pytest.mark.django_db
