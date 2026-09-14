@@ -18,3 +18,22 @@ class Payment(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
+
+
+class SellerLedger(models.Model):
+    """Seller ledger entries for financial transactions."""
+
+    class LegerEntryType(models.TextChoices):
+        SALE = 'SALE', 'Sale'
+        REFUND = 'REFUND', 'Refund'
+        COMMISSION = 'COMMISSION', 'Commission'
+        PAYOUT = 'PAYOUT', 'Payout'
+        ADJUSTMENT = 'ADJUSTMENT', 'Adjustment'
+
+    sellerId = models.IntegerField()
+    amount = models.BigIntegerField()
+    legerEntryType = models.CharField(
+        max_length=10,
+        choices=LegerEntryType.choices,
+    )
+    referenceID = models.CharField(max_length=600, db_index=True)
